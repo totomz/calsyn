@@ -23,9 +23,43 @@ const SYNC_WINDOW_DAYS = 14;
  * 2. Syncs the clone events for every job where this calendar is a destination
  */
 function main() {
-  const settings = readSettings();
-  exportEvents(settings);
-  syncDestinations(settings);
+  validateConfig();
+
+  // Prevent overlapping trigger runs: two concurrent executions would both
+  // see the same missing clones and create duplicates, and would race on the
+  // GitHub file update (sha conflicts)
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) {
+    log(`msg="another synchronization is running, skipping"`);
+    return;
+  }
+
+  try {
+    const settings = readSettings();
+    exportEvents(settings);
+    syncDestinations(settings);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Fails fast if any of the required script properties is missing.
+ */
+function validateConfig() {
+  const config = {
+    GITHUB_OWNER: GITHUB_OWNER,
+    GITHUB_REPO: GITHUB_REPO,
+    GITHUB_BRANCH: GITHUB_BRANCH,
+    GITHUB_TOKEN: GITHUB_TOKEN,
+    PROFILE: PROFILE,
+  };
+
+  const missing = Object.keys(config).filter((key) => !config[key] || !config[key].trim());
+  if (missing.length > 0) {
+    console.error(`msg="missing script properties" properties=${missing.join(",")}`);
+    throw new Error(`Missing script properties: ${missing.join(", ")}`);
+  }
 }
 
 /**
@@ -102,6 +136,13 @@ function syncDestinations(settings) {
  */
 function syncSource(calendar, job, source, start, end) {
   const prefix = source.event_clone_prefix;
+  if (!prefix || !prefix.trim()) {
+    // An empty prefix would match every event via startsWith("") and delete
+    // most of the calendar during the reconciliation
+    console.error(`msg="empty event_clone_prefix" job="${job.job}" source=${source.name}`);
+    throw new Error(`Empty event_clone_prefix for calendar '${source.name}'`);
+  }
+
   const details = job.details || [];
   const raw = readGithubFile(`${source.profile}-events.json`);
   if (raw === null) {
