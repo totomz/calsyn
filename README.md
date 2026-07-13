@@ -20,9 +20,8 @@ I vari agent leggono e scrivono i calendar da sincronizzare da vari file in un r
 Il setup è un pizzico laborioso, purtroppo, ma non dovrebbe richiedere piu' di 15 minuti:
 1. [Crea un GtiHub repo privato](docs/setup-github.md) vuoto;
 2. Aggiungi il file `settings.json` con i calendar da sincronizzare;
-3. Aggiungici lo script `calsync.sh`;
-4. Crea un [Google Sheet + AppScript](docs/setup-google.md) per ogni calendar Google da sincronizzare; 
-5. Installa [outlook-cli](docs/setup-oulook) cli;
+3. Crea un [Google Sheet + AppScript](docs/setup-google.md) per ogni calendar Google da sincronizzare; 
+4. Installa [outlook-cli](docs/setup-outlook.md) e configura il cron con `calsync.py`;
 
 ## Requirements
 Per funzionar,e bisogna installare e configurare un paio di cosette
@@ -116,4 +115,22 @@ hash = sha1(cloned_title + "|" + from + "|" + to + "|" + cloned_description)
 
 dove `cloned_title` e `cloned_description` sono stringhe vuote se il rispettivo campo non è incluso in `job.details`.
 Se l'hash fosse calcolato sempre su tutti i campi dell'evento sorgente, un job che non clona la description (o con `details` vuoto) produrrebbe cloni il cui hash non corrisponde mai a quello calcolato dal file, causando un delete+create di tutti gli eventi ad ogni ciclo.
+
+### Google (google-sync.gs)
+Ogni calendar Google è gestito dallo script `google-sync.gs`, installato come AppScript nell'account del calendar (vedi [setup-google](docs/setup-google.md)).
+La configurazione è nelle Script Properties (`GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_BRANCH`, `GITHUB_TOKEN`, `PROFILE`) e l'entry point `main()` viene eseguito ogni 5 minuti da un time-driven trigger.
+Lo script legge e scrive i file del repository tramite le API GitHub: non serve un clone locale.
+
+### Outlook (calsync.py)
+Tutti i calendar Outlook di una macchina sono gestiti da `calsync.py`, uno script python (senza dipendenze esterne) eseguito con cron ogni 5 minuti (vedi [setup-outlook](docs/setup-outlook.md)):
+
+```shell
+calsync.py <account[,account...]> <repo-url> [repo-path]
+```
+
+* `accounts`: lista (separata da virgola) dei profili outlook-cli da sincronizzare, uno alla volta; ogni profilo deve corrispondere al `profile` di un calendar `type=outlook` in `settings.json`;
+* `repo-url`: URL git del repository privato;
+* `repo-path`: path locale del clone, default `~/.calsync/<repo-name>`. Al primo run lo script clona il repository, ai successivi fa `git pull`; alla fine committa e pusha i file `<profile>-events.json` cambiati.
+
+Lo script vive **fuori dal repository** e usa un lock (`<repo-path>.lock`) per evitare run sovrapposti.
 
