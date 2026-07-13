@@ -97,13 +97,23 @@ Per ogni calendar:
 Ogni calendar ha un attributo `event_clone_prefix`. 
 Ogni calendario seleziona per la copia solamente gli eventi che non iniziano per nessuno dei prefix configurati.
 Tutti gli eventi cloni hanno come prefisso il `event_clone_prefix`.
-Per ogni calendario 
 
-### Google
-Ogni 5 minuti un App Script 
+Ogni 5 minuti un App Script (google) o un cron-job locale (outlook)
 * sovrascrive il file `<profile>-events.json` con tutti gli eventi del calendar (sono ignorati tutti gli eventi che hanno come prefisso del title/summary uno qualsiasi dei `[]calendar.event_clone_prefix` definiti in `settings.json`)
-* cancella tutti gli eventi dalle 00h00 di oggi + 14 giorni e che hanno nel title uno dei `event_clone_prefix` presente nelle settings.json
-* per ogni job di sync dove è registrato tra le `destinations`, crea tutti gli eventi che trova nel file `<job.source.profile>-events.json`
+* Per ogni job dove è registrato tra le `destination`
+* * per ogni source
+* * * carica tutti gli eventi dal file `-events.json` quella source, calcolandone l'hash (vedi sotto)
+* * * cerca tutti gli eventi gia esistenti che hanno quel prefix, now() + 14 giorni
+* * * per ogni evento gia nel calendar, vede se esiste un evento nel file con lo stesos hash (strippato del prefix). Se non esiste lo cancella dal calendar, se esiste salta, e lo leva dalla lista degli eventi letti dal file sorgente;
+* * * per ogni evento rimasto nella lista del file sorgente, crea l'evento (aggiungendo il prefix)
 
-### Outlook/Calsync
-Calsync è uno script bash che viene eseguito con cron; ogni 5 minuti fa git pull del repository (cosi da vedere le change)
+### Hash
+L'hash identifica univocamente un evento clone ed è calcolato **solo sui campi effettivamente clonati**, cioè dopo aver applicato il filtro `job.details`:
+
+```
+hash = sha1(cloned_title + "|" + from + "|" + to + "|" + cloned_description)
+```
+
+dove `cloned_title` e `cloned_description` sono stringhe vuote se il rispettivo campo non è incluso in `job.details`.
+Se l'hash fosse calcolato sempre su tutti i campi dell'evento sorgente, un job che non clona la description (o con `details` vuoto) produrrebbe cloni il cui hash non corrisponde mai a quello calcolato dal file, causando un delete+create di tutti gli eventi ad ogni ciclo.
+
