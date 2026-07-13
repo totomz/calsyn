@@ -42,7 +42,14 @@ window_end_utc() {
 }
 
 sha1() { printf '%s' "$1" | shasum -a 1 | cut -d' ' -f1; }
-b64d() { printf '%s' "$1" | base64 -d; }
+
+# Older macOS/BSD base64 only accepts -D for decoding; probe once at startup
+if echo "" | base64 -d >/dev/null 2>&1; then
+  BASE64_DECODE_FLAG="-d"
+else
+  BASE64_DECODE_FLAG="-D"
+fi
+b64d() { printf '%s' "$1" | base64 "${BASE64_DECODE_FLAG}"; }
 
 # jq helpers shared by every extraction: string normalization (null-safe,
 # unix line endings, trimmed) and the plain-text description of an event
