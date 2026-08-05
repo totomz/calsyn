@@ -30,13 +30,13 @@ from pathlib import Path
 
 WINDOW_DAYS = 14
 
-# write logs to calsync.py.log next to the script, so cron invocations
-# with a full path always log in the same directory as the script
+# write logs to calsync.py.log next to the script (so cron/launchd invocations
+# with a full path always log in the same directory) and to stdout as well
 LOG_FILE = Path(__file__).resolve().parent / "calsync.py.log"
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     level=logging.INFO,
-    filename=str(LOG_FILE),
+    handlers=[logging.FileHandler(str(LOG_FILE)), logging.StreamHandler(sys.stdout)],
 )
 log = logging.getLogger("calsync")
 
