@@ -9,128 +9,51 @@ Questo tool è **self-hosted** e **utilizza le credenziali dell'utente**
 Non è necessario registrare una Enterprise Application in Microsoft o in Google Workspace
 
 # General Architecture
-La sincronizzazione Outlook e Google avviene tramite dei "tools":
-* per Google, ogni Google Calendar è gestito da un Google Sheet + AppScript nel suo stesso account;
-* per Outlook usiamo [outlook-cli](https://github.com/yusufaltunbicak/outlook-cli) 
-
-I vari agent leggono e scrivono i calendar da sincronizzare da vari file in un repository Github privato dell'utente.
+La sincronizzazione Outlook e Google avviene tramite degli script che si interfacciano con Apple Calendar.App:
+Bisogna creare un Internet Account e sincronizzare ogni calendario in Calendar.app
 
 
 # How to use
-Il setup è un pizzico laborioso, purtroppo, ma non dovrebbe richiedere piu' di 15 minuti:
-1. [Crea un GtiHub repo privato](docs/setup-github.md) vuoto;
-2. Aggiungi il file `settings.json` con i calendar da sincronizzare;
-3. Crea un [Google Sheet + AppScript](docs/setup-google.md) per ogni calendar Google da sincronizzare; 
-4. Installa [outlook-cli](docs/setup-outlook.md) e configura il cron con `calsync.py`;
-
-## Requirements
-Per funzionar,e bisogna installare e configurare un paio di cosette
-- [A gitHub Repo](docs/setup-github.md)
-- [outlook-cli](https://github.com/yusufaltunbicak/outlook-cli) <-- TODO link alla doc 
-- [Google AppScript](docs/setup-google.md)
+`<todo>`
 
 # Datamodel
 ## Calendar
 Un Calendar `una "connessione" ad un calendar specifico: 
-```json
-		{
-			"name": "totomz",
-			"type": "google",
-			"profile": "totomz@gmail.com",
-			"event_clone_prefix": "[tom]"
-		}
+```yaml
+calendars:
+  - name: "@gmail"
+    clone_prefix: "[tom]"
+    color: green hire
+  - name: "infocert"
+    clone_prefix: "[inf]"
+    color: blue 
+  - name: "luxottica"
+    clone_prefix: "[inf]"
+    color: violet
+
 ```
-* `name`: identifica univocamente un calendar nei job di sync; duplica effettivamente il `profile`
-* `type`: self-explanatory, o `google` o `outlook`
-* `profile`: 
-* * se `type=google`: è il calendar id rappresentato da questa connessione (cioè, gli eventi vengono letti da questo calendar e scritti da questo calendar). Lo trovi in Google Calnedar -> Seleziona il caldendar -> Settings -> cerca "Integrate calendar"
-* * se `type=outlook`: è il nome del profilo outlook da usare
+* `cal_name`: identifica il calendar in Calendar.app
+* `clone_prefix`: è il suffisso che viene aggiunto ad ogni clone dell'evento
+* `color`: è il colore usato da tutti gli eventi clone
 
 ## Synchronization Job
 Un job è defined as:
 
-```json
-{
-	"job": "totomz -> tutto (no dettagli)",
-	"sources": [
-		"totomz"
-	],
-	"destinations": [
-		"croccocode",
-		"bob"
-	],
-	"details":[
-        "title",
-        "description"
-    ]
-}
+```yaml
+sync:
+  - name: "totomz -> tutto (no dettagli)"
+    source: "@gmail"
+    destinations: 
+      - infocert
+      - luxottica     
+    details:
+      title: false
+      descrription: false
 ```
 
-* `job`: è un nome descrittivo del sync
-* `sources`: è l'elenco dei `calendar.name` da cui prendere gli eventi da clonare;
+* `name`: è un nome descrittivo del sync
+* `source`: è il `calendar.name` da cui prendere gli eventi da clonare;
 * `destinations`; è l'elenco dei `calendar.name` dove creare gli eventi clone;
 * `details`: che campi clonare. Se vuoto gli eventi cloni avranno solo il prefisso `calendar.event_clone_prefix`, altrimenti:
 * * `title`: scrive il title/summary dell'evento
 * * `description`: scrive la descrizione dell'evento
-
-## Git repository
-Il repository git contiene questi files:
-* `settings.json`: configurazioni delle connessioni ai calendar e delle regole di sync
-
-Per ogni calendar:
-* `<profile>-events.json`: un file con tutti gli eventi letti da quel calendar e che andranno ad essere clonati con questo formato:
-
-```json
-[
-	{
-		"title": "meeting",
-        "from": "2026-07-15 10:00",
-        "to": "2026-07-15 12:00",
-        "description": "multi\nline\navailable"
-	}
-]
-```
-* `from` e `to` sono nel formato YYYY-MM-DD HH:MM in UTC
-
-## Come funziona il tutto
-Ogni calendar ha un attributo `event_clone_prefix`. 
-Ogni calendario seleziona per la copia solamente gli eventi che non iniziano per nessuno dei prefix configurati.
-Tutti gli eventi cloni hanno come prefisso il `event_clone_prefix`.
-
-Ogni 5 minuti un App Script (google) o un cron-job locale (outlook)
-* sovrascrive il file `<profile>-events.json` con tutti gli eventi del calendar (sono ignorati tutti gli eventi che hanno come prefisso del title/summary uno qualsiasi dei `[]calendar.event_clone_prefix` definiti in `settings.json`)
-* Per ogni job dove è registrato tra le `destination`
-* * per ogni source
-* * * carica tutti gli eventi dal file `-events.json` quella source, calcolandone l'hash (vedi sotto)
-* * * cerca tutti gli eventi gia esistenti che hanno quel prefix, now() + 14 giorni
-* * * per ogni evento gia nel calendar, vede se esiste un evento nel file con lo stesos hash (strippato del prefix). Se non esiste lo cancella dal calendar, se esiste salta, e lo leva dalla lista degli eventi letti dal file sorgente;
-* * * per ogni evento rimasto nella lista del file sorgente, crea l'evento (aggiungendo il prefix)
-
-### Hash
-L'hash identifica univocamente un evento clone ed è calcolato **solo sui campi effettivamente clonati**, cioè dopo aver applicato il filtro `job.details`:
-
-```
-hash = sha1(cloned_title + "|" + from + "|" + to + "|" + cloned_description)
-```
-
-dove `cloned_title` e `cloned_description` sono stringhe vuote se il rispettivo campo non è incluso in `job.details`.
-Se l'hash fosse calcolato sempre su tutti i campi dell'evento sorgente, un job che non clona la description (o con `details` vuoto) produrrebbe cloni il cui hash non corrisponde mai a quello calcolato dal file, causando un delete+create di tutti gli eventi ad ogni ciclo.
-
-### Google (google-sync.gs)
-Ogni calendar Google è gestito dallo script `google-sync.gs`, installato come AppScript nell'account del calendar (vedi [setup-google](docs/setup-google.md)).
-La configurazione è nelle Script Properties (`GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_BRANCH`, `GITHUB_TOKEN`, `PROFILE`) e l'entry point `main()` viene eseguito ogni 5 minuti da un time-driven trigger.
-Lo script legge e scrive i file del repository tramite le API GitHub: non serve un clone locale.
-
-### Outlook (calsync.py)
-Tutti i calendar Outlook di una macchina sono gestiti da `calsync.py`, uno script python (senza dipendenze esterne) eseguito con cron ogni 5 minuti (vedi [setup-outlook](docs/setup-outlook.md)):
-
-```shell
-calsync.py <account[,account...]> <repo-url> [repo-path]
-```
-
-* `accounts`: lista (separata da virgola) dei profili outlook-cli da sincronizzare, uno alla volta; ogni profilo deve corrispondere al `profile` di un calendar `type=outlook` in `settings.json`;
-* `repo-url`: URL git del repository privato;
-* `repo-path`: path locale del clone, default `~/.calsync/<repo-name>`. Al primo run lo script clona il repository, ai successivi fa `git pull`; alla fine committa e pusha i file `<profile>-events.json` cambiati.
-
-Lo script vive **fuori dal repository** e usa un lock (`<repo-path>.lock`) per evitare run sovrapposti.
-
