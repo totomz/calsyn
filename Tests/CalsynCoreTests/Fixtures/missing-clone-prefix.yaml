@@ -1,0 +1,13 @@
+calendars:
+  - name: "@gmail"
+    account: "tom@gmail.com"
+    title: "Calendar"
+    clone_prefix: "[tom]"
+  - name: "work"
+    account: "Exchange"
+    title: "Calendar"
+sync:
+  - name: "gmail -> work"
+    source: "@gmail"
+    destinations:
+      - work

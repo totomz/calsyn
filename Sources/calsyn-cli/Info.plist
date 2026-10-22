@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.totomz.calsyn</string>
+    <key>CFBundleName</key>
+    <string>calsyn</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>calsyn reads your calendars and writes clone events into them.</string>
+</dict>
+</plist>

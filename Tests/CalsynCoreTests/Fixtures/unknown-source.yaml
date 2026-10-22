@@ -1,0 +1,10 @@
+calendars:
+  - name: "work"
+    account: "Exchange"
+    title: "Calendar"
+    clone_prefix: "[W]"
+sync:
+  - name: "bar -> work"
+    source: "bar"
+    destinations:
+      - work
