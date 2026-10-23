@@ -23,7 +23,7 @@ public enum CLI {
         }
         switch command {
         case "once":
-            return Runner.once(configPath: configPath)
+            return await Runner.once(configPath: configPath, store: EventKitStore())
         case "calendars":
             return await listCalendars(store: EventKitStore())
         default:
@@ -36,21 +36,12 @@ public enum CLI {
         do {
             try await store.requestAccess()
         } catch {
-            logStoreError(error)
+            error.log()
             return 1
         }
         for calendar in store.calendars() {
-            Log.info("calendar", ["account": calendar.account, "title": calendar.title])
+            Log.info("calendar", ["id": calendar.id, "account": calendar.account, "title": calendar.title])
         }
         return 0
-    }
-
-    private static func logStoreError(_ error: CalendarStoreError) {
-        switch error {
-        case .accessDenied:
-            Log.error("calendar access denied")
-        case .accessFailed(let reason):
-            Log.error("calendar access failed", ["error": reason])
-        }
     }
 }

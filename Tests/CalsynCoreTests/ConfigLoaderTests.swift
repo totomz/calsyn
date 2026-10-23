@@ -20,14 +20,14 @@ final class ConfigLoaderTests: XCTestCase {
     func testValidConfig() throws {
         let config = try ConfigLoader.load(path: try fixture("valid"))
         XCTAssertEqual(config.calendars, [
-            CalendarConfig(name: "@gmail", account: "tom@gmail.com", title: "Calendar", clonePrefix: "[tom]"),
-            CalendarConfig(name: "work", account: "Exchange", title: "Calendar", clonePrefix: "[W]"),
+            CalendarConfig(id: "tom@gmail.com/Calendar", clonePrefix: "[tom]"),
+            CalendarConfig(id: "Exchange/Calendar", clonePrefix: "[W]"),
         ])
         XCTAssertEqual(config.sync, [
             SyncJob(
                 name: "gmail -> work",
-                source: "@gmail",
-                destinations: ["work"],
+                sources: ["tom@gmail.com/Calendar"],
+                destinations: ["Exchange/Calendar"],
                 details: SyncDetails(title: false, description: false)
             ),
         ])
@@ -49,11 +49,11 @@ final class ConfigLoaderTests: XCTestCase {
     func testUnknownDestination() throws {
         XCTAssertEqual(
             try loadError("unknown-destination"),
-            .unknownCalendar(field: "sync[0].destinations[1]", name: "foo")
+            .unknownCalendar(field: "sync[0].destinations[1]", id: "foo")
         )
     }
 
     func testUnknownSource() throws {
-        XCTAssertEqual(try loadError("unknown-source"), .unknownCalendar(field: "sync[0].source", name: "bar"))
+        XCTAssertEqual(try loadError("unknown-source"), .unknownCalendar(field: "sync[0].sources[0]", id: "bar"))
     }
 }

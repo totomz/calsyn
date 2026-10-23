@@ -3,3 +3,4 @@
 settings.json
 calsync.launchd.*
 .build/
+config.yaml

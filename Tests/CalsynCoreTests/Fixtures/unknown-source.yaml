@@ -1,10 +1,9 @@
 calendars:
-  - name: "work"
-    account: "Exchange"
-    title: "Calendar"
+  - id: "Exchange/Calendar"
     clone_prefix: "[W]"
 sync:
   - name: "bar -> work"
-    source: "bar"
+    sources:
+      - "bar"
     destinations:
-      - work
+      - "Exchange/Calendar"

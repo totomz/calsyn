@@ -2,9 +2,7 @@ import Foundation
 import Yams
 
 public struct CalendarConfig: Equatable, Sendable {
-    public let name: String
-    public let account: String
-    public let title: String
+    public let id: String
     public let clonePrefix: String
 }
 
@@ -15,45 +13,48 @@ public struct SyncDetails: Equatable, Sendable {
 
 public struct SyncJob: Equatable, Sendable {
     public let name: String
-    public let source: String
+    public let sources: [String]
     public let destinations: [String]
     public let details: SyncDetails
+}
+
+public struct WindowConfig: Equatable, Sendable {
+    public let pastDays: Int
+    public let futureDays: Int
 }
 
 public struct Config: Equatable, Sendable {
     public let calendars: [CalendarConfig]
     public let sync: [SyncJob]
+    public let window: WindowConfig
 }
 
 public enum ConfigError: Error, Equatable {
     case unreadable(path: String, reason: String)
     case malformed(field: String, reason: String)
     case missingField(field: String)
-    case unknownCalendar(field: String, name: String)
+    case unknownCalendar(field: String, id: String)
 }
 
 private struct RawConfig: Decodable {
     let calendars: [RawCalendar]?
     let sync: [RawJob]?
+    let window: RawWindow?
 }
 
 private struct RawCalendar: Decodable {
-    let name: String?
-    let account: String?
-    let title: String?
+    let id: String?
     let clonePrefix: String?
 
     enum CodingKeys: String, CodingKey {
-        case name
-        case account
-        case title
+        case id
         case clonePrefix = "clone_prefix"
     }
 }
 
 private struct RawJob: Decodable {
     let name: String?
-    let source: String?
+    let sources: [String]?
     let destinations: [String]?
     let details: RawDetails?
 }
@@ -61,6 +62,16 @@ private struct RawJob: Decodable {
 private struct RawDetails: Decodable {
     let title: Bool?
     let description: Bool?
+}
+
+private struct RawWindow: Decodable {
+    let pastDays: Int?
+    let futureDays: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case pastDays = "past_days"
+        case futureDays = "future_days"
+    }
 }
 
 public enum ConfigLoader {
@@ -93,7 +104,7 @@ public enum ConfigLoader {
     }
 
     // Turns the raw document into a Config. Every field without a default is required;
-    // the first missing field, or the first job reference to an undeclared calendar name,
+    // the first missing field, or the first job reference to an undeclared calendar id,
     // is reported with its full path, e.g. `calendars[1].clone_prefix`.
     private static func validate(_ raw: RawConfig) throws(ConfigError) -> Config {
         guard let rawCalendars = raw.calendars else {
@@ -102,40 +113,42 @@ public enum ConfigLoader {
         var calendars: [CalendarConfig] = []
         for (index, item) in rawCalendars.enumerated() {
             let base = "calendars[\(index)]"
-            guard let name = item.name else { throw .missingField(field: "\(base).name") }
-            guard let account = item.account else { throw .missingField(field: "\(base).account") }
-            guard let title = item.title else { throw .missingField(field: "\(base).title") }
+            guard let id = item.id else { throw .missingField(field: "\(base).id") }
             guard let prefix = item.clonePrefix, !prefix.isEmpty else {
                 throw .missingField(field: "\(base).clone_prefix")
             }
-            calendars.append(CalendarConfig(name: name, account: account, title: title, clonePrefix: prefix))
+            calendars.append(CalendarConfig(id: id, clonePrefix: prefix))
         }
 
         guard let rawJobs = raw.sync else {
             throw .missingField(field: "sync")
         }
-        let declared = Set(calendars.map(\.name))
+        let declared = Set(calendars.map(\.id))
         var jobs: [SyncJob] = []
         for (index, item) in rawJobs.enumerated() {
             let base = "sync[\(index)]"
             guard let name = item.name else { throw .missingField(field: "\(base).name") }
-            guard let source = item.source else { throw .missingField(field: "\(base).source") }
+            guard let sources = item.sources else { throw .missingField(field: "\(base).sources") }
             guard let destinations = item.destinations else {
                 throw .missingField(field: "\(base).destinations")
             }
-            guard declared.contains(source) else {
-                throw .unknownCalendar(field: "\(base).source", name: source)
+            for (sourceIndex, source) in sources.enumerated() where !declared.contains(source) {
+                throw .unknownCalendar(field: "\(base).sources[\(sourceIndex)]", id: source)
             }
             for (destIndex, destination) in destinations.enumerated() where !declared.contains(destination) {
-                throw .unknownCalendar(field: "\(base).destinations[\(destIndex)]", name: destination)
+                throw .unknownCalendar(field: "\(base).destinations[\(destIndex)]", id: destination)
             }
             let details = SyncDetails(
                 title: item.details?.title ?? false,
                 description: item.details?.description ?? false
             )
-            jobs.append(SyncJob(name: name, source: source, destinations: destinations, details: details))
+            jobs.append(SyncJob(name: name, sources: sources, destinations: destinations, details: details))
         }
-        return Config(calendars: calendars, sync: jobs)
+        let window = WindowConfig(
+            pastDays: raw.window?.pastDays ?? 0,
+            futureDays: raw.window?.futureDays ?? 7
+        )
+        return Config(calendars: calendars, sync: jobs, window: window)
     }
 
     private static func describe(_ error: DecodingError) -> ConfigError {
