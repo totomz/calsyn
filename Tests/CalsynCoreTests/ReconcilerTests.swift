@@ -137,6 +137,22 @@ final class ReconcilerTests: XCTestCase {
         XCTAssertEqual(try contents(home), [tomorrow("[W] Budget", at: 10, notes: "Q4 numbers")])
     }
 
+    func testSourceNotClonedIntoItself() throws {
+        let job = SyncJob(
+            name: "both-to-both",
+            sources: [work.id, home.id],
+            destinations: [work.id, home.id],
+            details: SyncDetails(title: true, description: false),
+            cleanup: false
+        )
+        try store.create(tomorrow("Budget", at: 10), in: work)
+        try store.create(tomorrow("Dinner", at: 19), in: home)
+
+        XCTAssertEqual(try reconcile(job), JobResult(created: 2, deleted: 0))
+        XCTAssertEqual(try contents(work), [tomorrow("Budget", at: 10), tomorrow("[H] Dinner", at: 19)])
+        XCTAssertEqual(try contents(home), [tomorrow("Dinner", at: 19), tomorrow("[W] Budget", at: 10)])
+    }
+
     func testSourceDeleted() throws {
         let job = syncJob(work, home)
         try store.create(tomorrow("Budget", at: 10), in: work)

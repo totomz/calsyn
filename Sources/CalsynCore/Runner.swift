@@ -59,7 +59,10 @@ public enum Runner {
     // nothing else changed, so it notifies nothing and the loop goes idle until the next trigger.
     public static func triggers(store: EventKitStore, every interval: Duration) -> AsyncStream<Void> {
         let (triggers, continuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
-        store.onChange { continuation.yield() }
+        store.onChange {
+            Log.info("calendar changed")
+            continuation.yield()
+        }
         let timer = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: interval)

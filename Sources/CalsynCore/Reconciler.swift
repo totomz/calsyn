@@ -19,6 +19,7 @@ public enum Reconciler {
     // the others are deleted, then the wanted clones left without a match are created (RC-04).
     // A clone matches a wanted one when title, start, end and all-day flag are all equal, so a clone
     // whose title differs from what the job clones now is replaced; notes are ignored (RC-03, RC-07).
+    // A source is never cloned into itself: a destination that is the source calendar is skipped for it.
     // No other filter applies: all-day, declined, free and tentative events are cloned too, and the store
     // returns one event per occurrence of a recurring series, each cloned as a standalone event (RC-05, RC-06).
     // Every calendar of the job is resolved before the first write; an empty window reads nothing.
@@ -48,7 +49,7 @@ public enum Reconciler {
                 let wanted = try store.events(in: source.calendar, during: window)
                     .filter { event in !prefixes.contains { event.content.title.hasPrefix($0) } }
                     .map { clone(of: $0.content, prefix: source.prefix, details: job.details) }
-                for destination in destinations {
+                for destination in destinations where destination != source.calendar {
                     let existing = try store.events(in: destination, during: window)
                         .filter { $0.content.title.hasPrefix(source.prefix) }
                     let (extra, missing) = diff(wanted: wanted, existing: existing)
