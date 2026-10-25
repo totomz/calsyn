@@ -56,4 +56,27 @@ final class RunnerTests: XCTestCase {
         XCTAssertEqual(try store.events(in: home, during: window).map(\.content), [event("Dinner"), event("[W]")])
         XCTAssertEqual(try store.events(in: work, during: window).map(\.content), [event("Budget"), event("[H]")])
     }
+
+    func testCleanupOnlyJobsWithCleanup() async throws {
+        let store = InMemoryCalendarStore(calendars: [work, home])
+        try store.create(event("[W]"), in: home)
+        try store.create(event("[H]"), in: work)
+        let path = FileManager.default.temporaryDirectory.appendingPathComponent("calsyn-\(UUID().uuidString).yaml").path
+        addTeardownBlock { try? FileManager.default.removeItem(atPath: path) }
+        try """
+        \(config(work, to: home))
+            cleanup: true
+          - name: home-to-work
+            sources:
+              - \(home.id)
+            destinations:
+              - \(work.id)
+        """.write(toFile: path, atomically: true, encoding: .utf8)
+
+        let code = await Runner.cleanup(configPath: path, store: store)
+
+        XCTAssertEqual(code, 0)
+        XCTAssertEqual(try store.events(in: home, during: window).map(\.content), [])
+        XCTAssertEqual(try store.events(in: work, during: window).map(\.content), [event("[H]")])
+    }
 }

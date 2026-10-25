@@ -5,7 +5,7 @@ public enum CLI {
     // Every usage problem is reported as a logfmt ERROR line and a non-zero exit code.
     public static func main(_ arguments: [String], opener: some Opener = SystemOpener()) async -> Int32 {
         guard let command = arguments.first else {
-            Log.error("missing command", ["usage": "calsyn once|run|calendars|config [--config <path>] | calsyn install|uninstall"])
+            Log.error("missing command", ["usage": "calsyn once|run|cleanup|calendars|config [--config <path>] | calsyn install|uninstall"])
             return 1
         }
         var configPath = ConfigLoader.defaultPath
@@ -29,6 +29,8 @@ public enum CLI {
             let store = EventKitStore()
             let triggers = Runner.triggers(store: store, every: Runner.interval)
             return await Runner.run(configPath: configPath, store: store, triggers: triggers)
+        case "cleanup":
+            return await Runner.cleanup(configPath: configPath, store: EventKitStore())
         case "calendars":
             return await listCalendars(store: EventKitStore())
         case "config":

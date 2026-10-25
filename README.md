@@ -16,7 +16,12 @@ Bisogna creare un Internet Account e sincronizzare ogni calendario in Calendar.a
 
 
 # How to use
-`<todo>`
+Come si usa:
+- calsyn calendars per gli id
+- calsyn config per modificare la config YAML
+- calsyn once o calsyn run
+- calsyn install come servizio di sistema (LaunchAgent)
+  
 
 # Datamodel
 ## Calendar

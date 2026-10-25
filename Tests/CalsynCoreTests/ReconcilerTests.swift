@@ -30,7 +30,8 @@ final class ReconcilerTests: XCTestCase {
             name: "\(source.account)-to-\(destination.account)",
             sources: [source.id],
             destinations: [destination.id],
-            details: SyncDetails(title: title, description: description)
+            details: SyncDetails(title: title, description: description),
+            cleanup: false
         )
     }
 
@@ -126,6 +127,16 @@ final class ReconcilerTests: XCTestCase {
         XCTAssertEqual(try contents(home), [tomorrow("[W] Budget review", at: 10)])
     }
 
+    func testNotesIgnoredWhenMatchingClones() throws {
+        let job = syncJob(work, home, title: true, description: true)
+        try store.create(tomorrow("Budget", at: 10, notes: "Q4 numbers"), in: work)
+        _ = try reconcile(job)
+        try replaceSource(with: tomorrow("Budget", at: 10, notes: "Q4 numbers, final"))
+
+        XCTAssertEqual(try reconcile(job), JobResult(created: 0, deleted: 0))
+        XCTAssertEqual(try contents(home), [tomorrow("[W] Budget", at: 10, notes: "Q4 numbers")])
+    }
+
     func testSourceDeleted() throws {
         let job = syncJob(work, home)
         try store.create(tomorrow("Budget", at: 10), in: work)
@@ -204,5 +215,20 @@ final class ReconcilerTests: XCTestCase {
 
         XCTAssertEqual(try reconcile(syncJob(work, home)), JobResult(created: 3, deleted: 0))
         XCTAssertEqual(try contents(home), [tomorrow("[W]", at: 9), tomorrow("[W]", at: 12), tomorrow("[W]", at: 15)])
+    }
+
+    func testCleanupDeletesClonesOfTheJobSources() throws {
+        try store.create(tomorrow("Budget", at: 10), in: work)
+        try store.create(tomorrow("Dinner", at: 19), in: home)
+        try store.create(tomorrow("[W] Budget", at: 10, notes: "Q4 numbers"), in: home)
+        try store.create(tomorrow("[W]", at: 14), in: home)
+        try store.create(tomorrow("[H] Gym", at: 7), in: home)
+        try store.create(event("[W]", day: 30), in: home)
+
+        let deleted = try Reconciler.cleanup(job: syncJob(work, home), calendars: calendars, store: store, window: window)
+
+        XCTAssertEqual(deleted, 2)
+        XCTAssertEqual(try allContents(home), [tomorrow("Dinner", at: 19), tomorrow("[H] Gym", at: 7), event("[W]", day: 30)])
+        XCTAssertEqual(try contents(work), [tomorrow("Budget", at: 10)])
     }
 }

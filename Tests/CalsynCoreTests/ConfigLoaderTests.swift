@@ -28,9 +28,27 @@ final class ConfigLoaderTests: XCTestCase {
                 name: "gmail -> work",
                 sources: ["tom@gmail.com/Calendar"],
                 destinations: ["Exchange/Calendar"],
-                details: SyncDetails(title: false, description: false)
+                details: SyncDetails(title: false, description: false),
+                cleanup: false
             ),
         ])
+    }
+
+    func testCleanupFlag() throws {
+        let config = try ConfigLoader.parse("""
+        calendars:
+          - id: Exchange/Calendar
+            clone_prefix: "[W]"
+        sync:
+          - name: with-cleanup
+            sources: [Exchange/Calendar]
+            destinations: [Exchange/Calendar]
+            cleanup: true
+          - name: without-cleanup
+            sources: [Exchange/Calendar]
+            destinations: [Exchange/Calendar]
+        """)
+        XCTAssertEqual(config.sync.map(\.cleanup), [true, false])
     }
 
     func testDetailsDefaultToFalse() throws {

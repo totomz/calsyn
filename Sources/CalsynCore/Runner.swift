@@ -16,6 +16,29 @@ public enum Runner {
         return reconcile(config, store: store) ? 0 : 1
     }
 
+    public static func cleanup(configPath: String, store: some CalendarStore) async -> Int32 {
+        guard let config = loadConfig(path: configPath) else {
+            return 1
+        }
+        do {
+            try await store.requestAccess()
+        } catch {
+            error.log()
+            return 1
+        }
+        let window = Reconciler.window(config.window, now: Date())
+        for job in config.sync where job.cleanup {
+            do {
+                let deleted = try Reconciler.cleanup(job: job, calendars: config.calendars, store: store, window: window)
+                Log.info("job cleaned", ["job": job.name, "deleted": deleted])
+            } catch {
+                logJobError(error, job: job.name)
+                return 1
+            }
+        }
+        return 0
+    }
+
     public static func run(configPath: String, store: some CalendarStore, triggers: AsyncStream<Void>) async -> Int32 {
         do {
             try await store.requestAccess()

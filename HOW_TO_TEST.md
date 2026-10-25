@@ -11,7 +11,9 @@ reconciler on the in-memory fake store, including recurring, all-day, declined, 
 (AS-04..AS-11, AS-18), the runner reloading the config at every reconcile (AS-15), and `install`/`uninstall` against
 a temporary home and a fake `launchctl`: binary copy, plist paths and content, load and unload calls (AS-16), and
 `calsyn config` against a temporary folder and a fake `open -t`: empty file and parent folders created, existing file
-kept, `--config <path>` opened, exit code ≠ 0 when the file cannot be created or `open -t` fails (TASK-010).
+kept, `--config <path>` opened, exit code ≠ 0 when the file cannot be created or `open -t` fails (TASK-010), and
+`calsyn cleanup`: only the jobs with `cleanup: true` delete, in their destinations and inside the window, the events
+whose title starts with the prefix of one of their sources.
 
 ## Manual E2E
 

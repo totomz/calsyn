@@ -16,6 +16,7 @@ public struct SyncJob: Equatable, Sendable {
     public let sources: [String]
     public let destinations: [String]
     public let details: SyncDetails
+    public let cleanup: Bool
 }
 
 public struct WindowConfig: Equatable, Sendable {
@@ -57,6 +58,7 @@ private struct RawJob: Decodable {
     let sources: [String]?
     let destinations: [String]?
     let details: RawDetails?
+    let cleanup: Bool?
 }
 
 private struct RawDetails: Decodable {
@@ -142,7 +144,13 @@ public enum ConfigLoader {
                 title: item.details?.title ?? false,
                 description: item.details?.description ?? false
             )
-            jobs.append(SyncJob(name: name, sources: sources, destinations: destinations, details: details))
+            jobs.append(SyncJob(
+                name: name,
+                sources: sources,
+                destinations: destinations,
+                details: details,
+                cleanup: item.cleanup ?? false
+            ))
         }
         let window = WindowConfig(
             pastDays: raw.window?.pastDays ?? 0,
