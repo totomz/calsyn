@@ -53,9 +53,36 @@ final class LaunchAgentTests: XCTestCase {
     }
 
     func testPaths() {
-        XCTAssertEqual(paths.binary.path, "\(home.path)/.calsyn/bin/calsyn")
+        XCTAssertEqual(paths.binary.path, "\(home.path)/bin/calsyn")
         XCTAssertEqual(paths.plist.path, "\(home.path)/Library/LaunchAgents/com.totomz.calsyn.plist")
         XCTAssertEqual(paths.log.path, "\(home.path)/Library/Logs/calsyn.log")
+    }
+
+    func testBinaryInGivenFolder() {
+        let folder = home.appendingPathComponent("tools")
+
+        XCTAssertEqual(LaunchAgentPaths(home: home, binDirectory: folder).binary.path, "\(home.path)/tools/calsyn")
+    }
+
+    func testBinDirectoryAnswers() {
+        let answers = ["", "  ", "~", "~/tools", "/opt/calsyn"]
+        let expected = [
+            "\(home.path)/bin",
+            "\(home.path)/bin",
+            home.path,
+            "\(home.path)/tools",
+            "/opt/calsyn",
+        ]
+        for (answer, path) in zip(answers, expected) {
+            let prompter = FakePrompter([{ answer }])
+
+            XCTAssertEqual(LaunchAgent.binDirectory(home: home, prompter: prompter)?.path, path)
+            XCTAssertEqual(prompter.questions, ["Where to install the binary? [~/bin]"])
+        }
+    }
+
+    func testBinDirectoryNilWhenInputEnds() {
+        XCTAssertNil(LaunchAgent.binDirectory(home: home, prompter: FakePrompter()))
     }
 
     func testInstallCopiesBinaryWritesPlistAndLoadsIt() throws {

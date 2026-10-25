@@ -3,7 +3,11 @@ import Foundation
 public enum CLI {
     // Parses `calsyn <command> [--config <path>]` and dispatches the command; `install` and `uninstall` take no arguments.
     // Every usage problem is reported as a logfmt ERROR line and a non-zero exit code.
-    public static func main(_ arguments: [String], opener: some Opener = SystemOpener()) async -> Int32 {
+    public static func main(
+        _ arguments: [String],
+        opener: some Opener = SystemOpener(),
+        prompter: some Prompter = StdinPrompter()
+    ) async -> Int32 {
         guard let command = arguments.first else {
             Log.error("missing command", ["usage": "calsyn once|run|cleanup|calendars|config [--config <path>] | calsyn install|uninstall"])
             return 1
@@ -36,11 +40,20 @@ public enum CLI {
         case "config":
             return ConfigEditor.open(path: configPath, opener: opener)
         case "install":
+            guard ConfigEditor.ensure(path: configPath, opener: opener, prompter: prompter) == 0 else {
+                return 1
+            }
             guard let executable = Bundle.main.executableURL else {
                 Log.error("executable not found")
                 return 1
             }
-            return LaunchAgent.install(executable: executable.resolvingSymlinksInPath(), paths: LaunchAgentPaths(), launchctl: SystemLaunchctl())
+            let home = FileManager.default.homeDirectoryForCurrentUser
+            guard let binDirectory = LaunchAgent.binDirectory(home: home, prompter: prompter) else {
+                Log.error("binary folder not given")
+                return 1
+            }
+            let paths = LaunchAgentPaths(home: home, binDirectory: binDirectory)
+            return LaunchAgent.install(executable: executable.resolvingSymlinksInPath(), paths: paths, launchctl: SystemLaunchctl())
         case "uninstall":
             return LaunchAgent.uninstall(paths: LaunchAgentPaths(), launchctl: SystemLaunchctl())
         default:

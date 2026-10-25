@@ -1,5 +1,3 @@
-claude --resume 2fcb9e28-1190-42ac-84fc-b376b67bd9fe
-
 # calsyn
 Sincronizza piu' calendari Outlook e Google Calendar tra loro
 In particolare crea degli eventi clone nei rispettivi calendari in modo da:
@@ -16,6 +14,18 @@ Bisogna creare un Internet Account e sincronizzare ogni calendario in Calendar.a
 
 
 # How to use
+Clone this repo
+```shell
+git clone github.com/totomz/calsyn
+```
+
+Build and install - this will copy the executable and generate an empty configuration file
+```shell
+swift build && .build/debug/calsyn install
+```
+
+Build and install the executable
+
 Come si usa:
 - calsyn calendars per gli id
 - calsyn config per modificare la config YAML

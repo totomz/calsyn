@@ -79,4 +79,65 @@ final class ConfigEditorTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: path))
         XCTAssertEqual(opener.calls, [path])
     }
+
+    func testEnsureKeepsExistingConfig() throws {
+        let path = root.appendingPathComponent("config.yaml").path
+        try "calendars: []\n".write(toFile: path, atomically: true, encoding: .utf8)
+        let opener = FakeOpener()
+        let prompter = FakePrompter()
+
+        let code = ConfigEditor.ensure(path: path, opener: opener, prompter: prompter)
+
+        XCTAssertEqual(code, 0)
+        XCTAssertEqual(opener.calls, [])
+        XCTAssertEqual(prompter.questions, [])
+    }
+
+    func testEnsureOpensMissingConfigAndAsksUntilItIsFilled() throws {
+        let path = root.appendingPathComponent(".config/calsyn/config.yaml").path
+        let opener = FakeOpener()
+        let prompter = FakePrompter([
+            { "" },
+            { try " \n".write(toFile: path, atomically: true, encoding: .utf8); return "" },
+            { try "calendars: []\n".write(toFile: path, atomically: true, encoding: .utf8); return "" },
+        ])
+
+        let code = ConfigEditor.ensure(path: path, opener: opener, prompter: prompter)
+
+        XCTAssertEqual(code, 0)
+        XCTAssertEqual(opener.calls, [path])
+        XCTAssertEqual(prompter.questions.count, 3)
+        XCTAssertEqual(prompter.questions.first, "Config done? Press Enter to continue")
+    }
+
+    func testEnsureOpensEmptyConfig() throws {
+        let path = root.appendingPathComponent("config.yaml").path
+        try "".write(toFile: path, atomically: true, encoding: .utf8)
+        let opener = FakeOpener()
+        let prompter = FakePrompter([{ try "calendars: []\n".write(toFile: path, atomically: true, encoding: .utf8); return "" }])
+
+        let code = ConfigEditor.ensure(path: path, opener: opener, prompter: prompter)
+
+        XCTAssertEqual(code, 0)
+        XCTAssertEqual(opener.calls, [path])
+        XCTAssertEqual(prompter.questions.count, 1)
+    }
+
+    func testEnsureFailsWhenInputEnds() {
+        let path = root.appendingPathComponent("config.yaml").path
+
+        let code = ConfigEditor.ensure(path: path, opener: FakeOpener(), prompter: FakePrompter())
+
+        XCTAssertNotEqual(code, 0)
+    }
+
+    func testEnsureFailsWhenOpenerFails() {
+        let path = root.appendingPathComponent("config.yaml").path
+        let prompter = FakePrompter()
+
+        let code = ConfigEditor.ensure(path: path, opener: FakeOpener(status: 1), prompter: prompter)
+
+        XCTAssertNotEqual(code, 0)
+        XCTAssertEqual(prompter.questions, [])
+    }
 }

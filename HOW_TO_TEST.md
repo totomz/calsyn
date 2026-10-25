@@ -131,14 +131,15 @@ usually followed by one more reconcile logging `created=0 deleted=0`: its own wr
 
 ### AS-16 — LaunchAgent `calsyn install` / `calsyn uninstall`
 
-The agent runs `~/.calsyn/bin/calsyn run` with the default config `~/.config/calsyn/config.yaml` and writes its
-output to `~/Library/Logs/calsyn.log`.
+The agent runs `~/bin/calsyn run` (the folder asked by `install`, Enter picks `~/bin`) with the default config
+`~/.config/calsyn/config.yaml` and writes its output to `~/Library/Logs/calsyn.log`.
 
 1. Run `.build/debug/calsyn once` and check it logs `msg="settings loaded"` and that `echo $?` prints `0`.
-2. Run `.build/debug/calsyn install` and check stdout shows `msg="agent installed"` and that `echo $?` prints `0`.
+2. Run `.build/debug/calsyn install`, press Enter at `Where to install the binary? [~/bin]`, and check stdout shows
+   `msg="agent installed"` and that `echo $?` prints `0`.
 3. If macOS asks Calendar access, allow it.
-4. Check `ls -l ~/.calsyn/bin/calsyn` shows the binary and `cat ~/Library/LaunchAgents/com.totomz.calsyn.plist`
-   shows `ProgramArguments` `<home>/.calsyn/bin/calsyn` `run`, `RunAtLoad` and `KeepAlive` `true`,
+4. Check `ls -l ~/bin/calsyn` shows the binary and `cat ~/Library/LaunchAgents/com.totomz.calsyn.plist`
+   shows `ProgramArguments` `<home>/bin/calsyn` `run`, `RunAtLoad` and `KeepAlive` `true`,
    `ThrottleInterval` `300`.
 5. Check `launchctl list | grep com.totomz.calsyn` prints one line whose first column is a PID (not `-`).
 6. Run `tail -f ~/Library/Logs/calsyn.log` and check it shows `msg="settings loaded"` and one `msg="job reconciled"`
@@ -155,7 +156,7 @@ output to `~/Library/Logs/calsyn.log`.
 10. Run `.build/debug/calsyn uninstall` and check stdout shows `msg="agent uninstalled"` and that `echo $?` prints `0`.
 11. Check `launchctl list | grep com.totomz.calsyn` prints nothing and
     `ls ~/Library/LaunchAgents/com.totomz.calsyn.plist` reports `No such file or directory`.
-12. Cleanup: `uninstall` leaves the binary and the log in place; remove them with `rm -rf ~/.calsyn` and
+12. Cleanup: `uninstall` leaves the binary and the log in place; remove them with `rm ~/bin/calsyn` and
     `rm ~/Library/Logs/calsyn.log`.
 
 ### TASK-010 — open the config with `calsyn config`

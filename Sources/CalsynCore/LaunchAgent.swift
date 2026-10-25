@@ -5,8 +5,8 @@ public struct LaunchAgentPaths: Equatable, Sendable {
     public let plist: URL
     public let log: URL
 
-    public init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
-        binary = home.appendingPathComponent(".calsyn/bin/calsyn")
+    public init(home: URL = FileManager.default.homeDirectoryForCurrentUser, binDirectory: URL? = nil) {
+        binary = (binDirectory ?? home.appendingPathComponent("bin")).appendingPathComponent("calsyn")
         plist = home.appendingPathComponent("Library/LaunchAgents/\(LaunchAgent.label).plist")
         log = home.appendingPathComponent("Library/Logs/calsyn.log")
     }
@@ -79,6 +79,25 @@ public enum LaunchAgent {
 
     static var service: String {
         "\(domain)/\(label)"
+    }
+
+    // Asks the folder the binary is copied to: Enter alone picks `~/bin`, a leading `~` stands for `home`
+    // and a relative path is taken from the current directory. Nil when the input ends without an answer.
+    public static func binDirectory(home: URL, prompter: some Prompter) -> URL? {
+        guard let answer = prompter.ask("Where to install the binary? [~/bin]") else {
+            return nil
+        }
+        let path = answer.trimmingCharacters(in: .whitespaces)
+        if path.isEmpty {
+            return home.appendingPathComponent("bin")
+        }
+        if path == "~" {
+            return home
+        }
+        if path.hasPrefix("~/") {
+            return home.appendingPathComponent(String(path.dropFirst(2)))
+        }
+        return URL(fileURLWithPath: path)
     }
 
     public static func plist(_ paths: LaunchAgentPaths) -> AgentPlist {

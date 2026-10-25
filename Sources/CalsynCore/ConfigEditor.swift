@@ -37,6 +37,28 @@ public struct SystemOpener: Opener {
 }
 
 public enum ConfigEditor {
+    // Makes sure the config file exists and is not blank before going on. A missing or blank file is
+    // created and opened in the text editor, then the user is asked to confirm with Enter; the question
+    // is repeated until the file holds something. Fails when the file cannot be opened or the input ends.
+    public static func ensure(path: String, opener: some Opener, prompter: some Prompter) -> Int32 {
+        guard !hasContent(path) else {
+            return 0
+        }
+        Log.info("config missing", ["path": path])
+        guard open(path: path, opener: opener) == 0 else {
+            return 1
+        }
+        while prompter.ask("Config done? Press Enter to continue") != nil {
+            if hasContent(path) {
+                Log.info("config ready", ["path": path])
+                return 0
+            }
+            Log.error("config missing or empty", ["path": path])
+        }
+        Log.error("config not confirmed", ["path": path])
+        return 1
+    }
+
     public static func open(path: String, opener: some Opener) -> Int32 {
         do {
             try createIfMissing(path)
@@ -54,6 +76,13 @@ public enum ConfigEditor {
         guard result.status == 0 else {
             throw .openFailed(path: path, status: result.status, output: result.output)
         }
+    }
+
+    private static func hasContent(_ path: String) -> Bool {
+        guard let text = try? String(contentsOfFile: path, encoding: .utf8) else {
+            return false
+        }
+        return !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private static func createIfMissing(_ path: String) throws(ConfigEditorError) {
