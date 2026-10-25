@@ -1,34 +1,34 @@
 # calsyn
-Sincronizza piu' calendari Outlook e Google Calendar tra loro
-In particolare crea degli eventi clone nei rispettivi calendari in modo da:
-* permettere agli altri utenti di vedere quando si è disponibili o meno;
-* vedere le modifiche su tutti i client connessi, senza dover importare/modificare i calendar visualizzati;
-* far funzoinare le notifiche
+Synchronizes multiple Outlook and Google Calendar calendars with each other
+In particular, it creates clone events in the respective calendars in order to:
+* let other users see when you are available or not;
+* see the changes on all connected clients, without having to import/modify the displayed calendars;
+* make notifications work
 
-Questo tool è **self-hosted** e **utilizza le credenziali dell'utente**
-Non è necessario registrare una Enterprise Application in Microsoft o in Google Workspace
+This tool is **self-hosted** and **uses the user's credentials**
+There is no need to register an Enterprise Application in Microsoft or in Google Workspace
 
 # General Architecture
-La sincronizzazione Outlook e Google avviene tramite degli script che si interfacciano con Apple Calendar.App:
-Bisogna creare un Internet Account e sincronizzare ogni calendario in Calendar.app
+The Outlook and Google synchronization happens through an EventKit binary that interfaces with Apple Calendar.app:
+You need to create an Internet Account and sync every calendar in Calendar.app
 
 
 # How to use
 Clone, build and install.
 Install will copy the executable and generate an empty configuration file
 ```shell
-git clone github.com/totomz/calsyn
+git clone https://github.com/totomz/calsyn
 swift build && .build/debug/calsyn install
 ```
 
 ## A simple configuration file
 Given these calendar IDs
 ```shell
-$ calsyn calendar
+$ calsyn calendars
 msg=calendar id="Google/AS Roma" 
-msg=calendar id=id=Google/personal
-msg=calendar id=id=Exchange/Job 
-msg=calendar id=id=Exchange/SideJob 
+msg=calendar id=Google/personal
+msg=calendar id=Exchange/Job 
+msg=calendar id=Exchange/SideJob 
 ```
 
 This is a sample configuration file
@@ -39,7 +39,7 @@ calendars:
   - id: Google/AS Roma    
     # every cloned event will have this prefix 
     clone_prefix: "[roma]"  
-  - id: id=Google/personal
+  - id: Google/personal
     clone_prefix: "[me]"
   - id: Exchange/Job
     clone_prefix: "[job]"
@@ -53,17 +53,17 @@ window:
   future_days: 8
 
 # sync job 
-# a job can have multiple sources and multiple destination
+# a job can have multiple sources and multiple destinations
 # skip the events sync if destination==source 
 sync:
   # can be anything
   - name: "clone all jobs to my personal"
-    # cancella gli eventi in destinations che hanno un prefix    
-    # tra quelli definiti nelle sources
-    # serve solo a scegliere i job del comando `cleanup`, questo tag è ignorato dal sync
-    # when `true`, delete all the events in every destinations 
-    # that begins with any prefix defined in sources
-    # It is used only by `calsync cleanup`, ignored by any other command
+    # deletes the events in destinations that have a prefix    
+    # among those defined in the sources
+    # only used to select the jobs of the `cleanup` command, this tag is ignored by the sync
+    # when `true`, delete all the events in every destination 
+    # that begin with any prefix defined in sources
+    # It is used only by `calsyn cleanup`, ignored by any other command
     # cleanup: true
     sources: 
       - Google/AS Roma
@@ -82,8 +82,8 @@ sync:
       - Exchange/Job
       - Exchange/SideJob  
       
-      # I\ll add also my personal events (not the clones)
-      - Google/@gMail
+      # add my personal events (not the clones)
+      - Google/personal
     details:
       # keep it private
       title: false
@@ -95,10 +95,10 @@ sync:
 ```
 
 ## Commands
-- `calsyn install`: generate a default config and install as a service
-- `calsyn calendars`: list the calendars id
-- `calsyn config`: update the config file (~/.config/calsyn.yaml)
-- `calsyn once`: run a single sinc
-- `calsyn run`: run as a service and listen for incoming changes. It also run every 5 minutes as cronjob
-- `calsyn cleanup`: delete al coloned events
+- `calsyn install`: install as a service and open an empty configuration file with the default editor
+- `calsyn calendars`: list the calendar ids
+- `calsyn config`: update the config file (~/.config/calsyn/config.yaml)
+- `calsyn once`: run a single sync
+- `calsyn run`: run as a service and listen for incoming changes. It also runs every 5 minutes as cronjob
+- `calsyn cleanup`: delete all cloned events for the sync jobs that have `cleanup: true`. Affects only events in the configured time window
 
