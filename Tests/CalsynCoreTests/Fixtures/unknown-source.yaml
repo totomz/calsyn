@@ -1,0 +1,9 @@
+calendars:
+  - id: "Exchange/Calendar"
+    clone_prefix: "[W]"
+sync:
+  - name: "bar -> work"
+    sources:
+      - "bar"
+    destinations:
+      - "Exchange/Calendar"

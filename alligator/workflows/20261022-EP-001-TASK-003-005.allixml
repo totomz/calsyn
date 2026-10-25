@@ -1,0 +1,51 @@
+<context>
+Epic EP-001 — Calendar clones through Calendar.app.
+Goal: every calendar the Operator owns shows the busy slots of the other calendars, so colleagues on any account
+see the real availability and the Operator gets notified on every client.
+Architecture: a single Swift executable (`calsyn-cli`, Swift Package `calsyn`) talks to the calendar store
+through EventKit and never touches credentials. The `reconciler` is pure logic over the `calendar-store`
+abstraction, so it is tested against an in-memory fake.
+
+Scope of this workflow:
+- TASK-003: for each job, `calsyn once` makes every destination hold exactly one clone per source event in the
+  window (today → +7 days), creating the missing clones and deleting the extra ones.
+  Components: reconciler, calendar-store, runner.
+- TASK-005: `window.past_days` and `window.future_days` in the config change the window, and nothing outside it
+  is ever created or deleted. Components: config-loader, reconciler.
+</context>
+<input type="task">alligator/specs/EP-001/TASK-003.md</input>
+<input type="task">alligator/specs/EP-001/TASK-005.md</input>
+<coding_test>
+- `swift test`: reconciler on the in-memory fake store (AS-04..AS-08, AS-18); run on every change.
+- `swift test`: window boundaries and override on the fake store (AS-11); run on every change.
+- Manual E2E: `calsyn once` on a Mac with Exchange + Google, check both calendars in Calendar.app (AS-04, AS-05); before closing TASK-003.
+</coding_test>
+<available_agents>
+    <agent subagent_type="alligator-llm:developer" id="developer">Implements the code of the tasks and applies the fixes requested by the reviewer.</agent>
+    <agent subagent_type="alligator-llm:devils-advocate" id="devils-advocate">Reviews the implementation against the tasks' Definition of Done and the epic's architecture, and reports the gaps to the developer.</agent>
+</available_agents>
+<tasks>
+    <task id="task-003">
+        `developer` implements TASK-003. Definition of Done:
+        - A source event with no clone yet → after `calsyn once` each destination shows an event titled `&lt;prefix&gt;` with the same start and end
+        - With `details.title: true` the clone is titled `&lt;prefix&gt; &lt;title&gt;`; with `details.description: true` the clone notes show the source description
+        - A source event moved, or with a cloned field changed → after the reconcile the destination shows only the updated clone
+        - A source event deleted → after the reconcile its clone is gone from the destination
+        - Events whose title starts with any configured `clone_prefix` are never cloned: with jobs A→B and B→A, the second consecutive `calsyn once` logs `created=0 deleted=0` for both jobs
+        - Clones left by the old system that match a wanted clone stay; the others are deleted
+        - Each job logs one INFO summary line with `created=N deleted=N`
+        `devils-advocate` reviews the result; `developer` applies the fixes until the review passes.
+    </task>
+    <task id="task-005">
+        `developer` implements TASK-005. Definition of Done:
+        - Without `window` in the config, only events from the start of today to +7 days are cloned
+        - With `window.past_days` / `window.future_days` set, the clones cover exactly that range
+        - Source events and clones outside the window are neither created nor deleted
+        `devils-advocate` reviews the result; `developer` applies the fixes until the review passes.
+    </task>
+    <task id="close-specs">
+        Rename `alligator/specs/EP-001/TASK-003.md` to `alligator/specs/EP-001/TASK-003-done.md` and
+        `alligator/specs/EP-001/TASK-005.md` to `alligator/specs/EP-001/TASK-005-done.md`.
+        Update every reference to the old names under `alligator/specs/`.
+    </task>
+</tasks>

@@ -1,0 +1,50 @@
+<context>
+Epic EP-001 — Calendar clones through Calendar.app.
+Goal: every calendar the Operator owns shows the busy slots of the other calendars, so colleagues on any account
+see the real availability and the Operator gets notified on every client.
+Architecture: a single Swift executable (`calsyn-cli`, new Swift Package `calsyn`) talks to the calendar store
+through EventKit and never touches credentials.
+
+Scope of this workflow:
+- TASK-001: `calsyn once` reads `~/.config/calsyn/config.yaml` (or the file given with `--config`), validates it,
+  logs the outcome and exits with a code that tells success from failure. Components: cli, config-loader, runner.
+- TASK-002: `calsyn calendars` prints one row per calendar with account and title, ready to copy into
+  `config.yaml`. Components: cli, calendar-store.
+</context>
+<input type="task">alligator/specs/EP-001/TASK-001.md</input>
+<input type="task">alligator/specs/EP-001/TASK-002.md</input>
+<coding_test>
+- `swift test`: config-loader on valid and invalid fixtures (AS-01, AS-02); run on every change.
+- `swift test`: log formatter output (AS-17); run on every change.
+- Manual E2E: `calsyn calendars` on a Mac with Exchange + Google accounts (AS-03); before closing TASK-002.
+- Manual E2E: revoke access in System Settings → Privacy &amp; Security → Calendars, run `calsyn calendars` (AS-13); before closing TASK-002.
+</coding_test>
+<available_agents>
+    <agent subagent_type="alligator-llm:developer" id="developer">Implements the code of the tasks and applies the fixes requested by the reviewer.</agent>
+    <agent subagent_type="alligator-llm:devils-advocate" id="devils-advocate">Reviews the implementation against the tasks' Definition of Done and the epic's architecture, and reports the gaps to the developer.</agent>
+</available_agents>
+<tasks>
+    <task id="task-001">
+        `developer` implements TASK-001. Definition of Done:
+        - `calsyn once` with a valid config logs `msg="settings loaded"` with the number of calendars and jobs and exits with code 0
+        - `calsyn once --config &lt;path&gt;` reads the given file instead of `~/.config/calsyn/config.yaml`
+        - A config with a missing required field logs an ERROR line naming the field, exits with a code ≠ 0 and writes no calendar
+        - A job whose `source` or `destinations` reference a `name` not declared in `calendars` logs an ERROR line naming it, exits with a code ≠ 0 and writes no calendar
+        - `details.title` and `details.description` default to false when omitted
+        - Every line written by calsyn is logfmt with level INFO or ERROR
+        `devils-advocate` reviews the result; `developer` applies the fixes until the review passes.
+    </task>
+    <task id="task-002">
+        `developer` implements TASK-002. Definition of Done:
+        - `calsyn calendars` prints one row per calendar visible in Calendar.app, showing account and title
+        - On first use macOS asks the Operator to grant Calendar access to calsyn
+        - With Calendar access denied, any calsyn command that reads calendars logs an ERROR line and exits with a code ≠ 0
+        - calsyn never asks for nor stores account credentials
+        `devils-advocate` reviews the result; `developer` applies the fixes until the review passes.
+    </task>
+    <task id="close-specs">
+        Rename `alligator/specs/EP-001/TASK-001.md` to `alligator/specs/EP-001/TASK-001-done.md` and
+        `alligator/specs/EP-001/TASK-002.md` to `alligator/specs/EP-001/TASK-002-done.md`.
+        Update every reference to the old names under `alligator/specs/`.
+    </task>
+</tasks>
