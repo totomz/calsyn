@@ -40,6 +40,9 @@ public enum CLI {
         case "config":
             return ConfigEditor.open(path: configPath, opener: opener)
         case "install":
+            if !ConfigEditor.hasContent(configPath) {
+                _ = await listCalendars(store: EventKitStore())
+            }
             guard ConfigEditor.ensure(path: configPath, opener: opener, prompter: prompter) == 0 else {
                 return 1
             }

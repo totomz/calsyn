@@ -14,63 +14,91 @@ Bisogna creare un Internet Account e sincronizzare ogni calendario in Calendar.a
 
 
 # How to use
-Clone this repo
+Clone, build and install.
+Install will copy the executable and generate an empty configuration file
 ```shell
 git clone github.com/totomz/calsyn
-```
-
-Build and install - this will copy the executable and generate an empty configuration file
-```shell
 swift build && .build/debug/calsyn install
 ```
 
-Build and install the executable
+## A simple configuration file
+Given these calendar IDs
+```shell
+$ calsyn calendar
+msg=calendar id="Google/AS Roma" 
+msg=calendar id=id=Google/personal
+msg=calendar id=id=Exchange/Job 
+msg=calendar id=id=Exchange/SideJob 
+```
 
-Come si usa:
-- calsyn calendars per gli id
-- calsyn config per modificare la config YAML
-- calsyn once o calsyn run
-- calsyn install come servizio di sistema (LaunchAgent)
-  
-
-# Datamodel
-## Calendar
-Un Calendar `una "connessione" ad un calendar specifico: 
+This is a sample configuration file
 ```yaml
+# List here all your calendars
 calendars:
-  - name: "@gmail"
-    clone_prefix: "[tom]"
-    color: green hire
-  - name: "infocert"
-    clone_prefix: "[inf]"
-    color: blue 
-  - name: "luxottica"
-    clone_prefix: "[inf]"
-    color: violet
+    # id: same as the one from `calsyn calendars`
+  - id: Google/AS Roma    
+    # every cloned event will have this prefix 
+    clone_prefix: "[roma]"  
+  - id: id=Google/personal
+    clone_prefix: "[me]"
+  - id: Exchange/Job
+    clone_prefix: "[job]"
+  - id: Exchange/SideJob
+    clone_prefix: "[side]"  
+ 
+window:
+  # sync events in the past days
+  past_days: 0
+  # sync events in the next days
+  future_days: 8
 
-```
-* `cal_name`: identifica il calendar in Calendar.app
-* `clone_prefix`: è il suffisso che viene aggiunto ad ogni clone dell'evento
-* `color`: è il colore usato da tutti gli eventi clone
-
-## Synchronization Job
-Un job è defined as:
-
-```yaml
+# sync job 
+# a job can have multiple sources and multiple destination
+# skip the events sync if destination==source 
 sync:
-  - name: "totomz -> tutto (no dettagli)"
-    source: "@gmail"
-    destinations: 
-      - infocert
-      - luxottica     
+  # can be anything
+  - name: "clone all jobs to my personal"
+    # cancella gli eventi in destinations che hanno un prefix    
+    # tra quelli definiti nelle sources
+    # serve solo a scegliere i job del comando `cleanup`, questo tag è ignorato dal sync
+    # when `true`, delete all the events in every destinations 
+    # that begins with any prefix defined in sources
+    # It is used only by `calsync cleanup`, ignored by any other command
+    # cleanup: true
+    sources: 
+      - Google/AS Roma
+      - Exchange/Job
+      - Exchange/SideJob
     details:
+      # copy the event title in the clones
+      title: true
+      # copy the event description in the clones
+      description: true
+    destinations:
+      - Google/personal
+  
+  - name: "sync the jobs"    
+    sources:
+      - Exchange/Job
+      - Exchange/SideJob  
+      
+      # I\ll add also my personal events (not the clones)
+      - Google/@gMail
+    details:
+      # keep it private
       title: false
-      descrription: false
+      description: false
+    destinations:
+      - Exchange/Job
+      - Exchange/SideJob
+    
 ```
 
-* `name`: è un nome descrittivo del sync
-* `source`: è il `calendar.name` da cui prendere gli eventi da clonare;
-* `destinations`; è l'elenco dei `calendar.name` dove creare gli eventi clone;
-* `details`: che campi clonare. Se vuoto gli eventi cloni avranno solo il prefisso `calendar.event_clone_prefix`, altrimenti:
-* * `title`: scrive il title/summary dell'evento
-* * `description`: scrive la descrizione dell'evento
+## Commands
+- `calsyn install`: generate a default config and install as a service
+- `calsyn calendars`: list the calendars id
+- `calsyn config`: update the config file (~/.config/calsyn.yaml)
+- `calsyn once`: run a single sinc
+- `calsyn run`: run as a service and listen for incoming changes. It also run every 5 minutes as cronjob
+- `calsyn cleanup`: delete al coloned events
+

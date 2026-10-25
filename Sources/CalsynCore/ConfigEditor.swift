@@ -78,7 +78,7 @@ public enum ConfigEditor {
         }
     }
 
-    private static func hasContent(_ path: String) -> Bool {
+    static func hasContent(_ path: String) -> Bool {
         guard let text = try? String(contentsOfFile: path, encoding: .utf8) else {
             return false
         }
