@@ -45,8 +45,21 @@ public protocol CalendarStore {
 public final class EventKitStore: CalendarStore {
     private let store = EKEventStore()
     private var loaded: [String: EKEvent] = [:]
+    private var changeObserver: (any NSObjectProtocol)?
 
     public init() {}
+
+    deinit {
+        if let changeObserver {
+            NotificationCenter.default.removeObserver(changeObserver)
+        }
+    }
+
+    public func onChange(_ action: @escaping @Sendable () -> Void) {
+        changeObserver = NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: store, queue: nil) { _ in
+            action()
+        }
+    }
 
     public func requestAccess() async throws(CalendarAccessError) {
         let granted: Bool

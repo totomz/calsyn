@@ -19,6 +19,8 @@ public enum Reconciler {
     // the others are deleted, then the wanted clones left without a match are created (RC-04).
     // A clone matches a wanted one when title, notes, start, end and all-day flag are all equal, so a
     // clone whose title or notes differ from what the job clones now is replaced (RC-03, RC-07).
+    // No other filter applies: all-day, declined, free and tentative events are cloned too, and the store
+    // returns one event per occurrence of a recurring series, each cloned as a standalone event (RC-05, RC-06).
     // Every calendar of the job is resolved before the first write; an empty window reads nothing.
     public static func reconcile(
         job: SyncJob,

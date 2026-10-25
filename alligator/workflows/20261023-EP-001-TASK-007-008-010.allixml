@@ -1,0 +1,62 @@
+<context>
+Epic EP-001 — Calendar clones through Calendar.app.
+Goal: every calendar the Operator owns shows the busy slots of the other calendars, so colleagues on any account
+see the real availability and the Operator gets notified on every client.
+Architecture: a single Swift executable (`calsyn-cli`, Swift Package `calsyn`) talks to the calendar store
+through EventKit and never touches credentials. `runner` serialises reconciles triggered by startup, store
+changes and a 5 min timer; `launch-agent` keeps the process alive in the user session through launchd.
+
+Scope of this workflow:
+- TASK-007: `calsyn run` stays alive and reconciles at startup, after every calendar store change and every
+  5 minutes, one reconcile at a time, reloading the config each time. Components: cli, runner, config-loader.
+- TASK-008: `calsyn install` makes launchd keep `calsyn run` alive in the user session; `calsyn uninstall`
+  removes it. Components: cli, launch-agent.
+- TASK-010: `calsyn config` opens the config file in the macOS default text editor (`open -t`).
+  Components: cli.
+</context>
+<input type="task">alligator/specs/EP-001/TASK-007.md</input>
+<input type="task">alligator/specs/EP-001/TASK-008.md</input>
+<input type="task">alligator/specs/EP-001/TASK-010.md</input>
+<coding_test>
+- `swift test`: runner reloads config at every reconcile (AS-15); run on every change.
+- Manual E2E: `calsyn run`, edit an event in Calendar.app, check stdout (AS-14); before closing TASK-007.
+- Manual E2E: `calsyn install`, `launchctl list`, `tail ~/Library/Logs/calsyn.log`, `calsyn uninstall` (AS-16); before closing TASK-008.
+- Manual E2E: `calsyn config` with and without an existing config, and with `--config &lt;path&gt;`; before closing TASK-010.
+</coding_test>
+<available_agents>
+    <agent subagent_type="alligator-llm:developer" id="developer">Implements the code of the tasks and applies the fixes requested by the reviewer.</agent>
+    <agent subagent_type="alligator-llm:devils-advocate" id="devils-advocate">Reviews the implementation against the tasks' Definition of Done and the epic's architecture, and reports the gaps to the developer.</agent>
+</available_agents>
+<tasks>
+    <task id="task-007">
+        `developer` implements TASK-007. Definition of Done:
+        - `calsyn run` logs a reconcile at startup
+        - After the Operator edits an event in Calendar.app, the log shows a new reconcile without any command
+        - With no changes, the log shows a reconcile every 5 minutes
+        - Reconciles never overlap: the log never shows a reconcile starting before the previous one ended
+        - After the Operator edits `config.yaml` while `calsyn run` is running, the next reconcile uses the new config without a restart
+        `devils-advocate` reviews the result; `developer` applies the fixes until the review passes.
+    </task>
+    <task id="task-008">
+        `developer` implements TASK-008. Definition of Done:
+        - `calsyn install` copies the binary to `~/.calsyn/bin`, writes `~/Library/LaunchAgents/com.totomz.calsyn.plist` and loads it
+        - After `calsyn install`, `launchctl list` shows `com.totomz.calsyn` and `~/Library/Logs/calsyn.log` grows with reconcile lines
+        - After a logout/login the agent is running again
+        - `calsyn uninstall` unloads the agent and removes the plist: `launchctl list` no longer shows `com.totomz.calsyn`
+        `devils-advocate` reviews the result; `developer` applies the fixes until the review passes.
+    </task>
+    <task id="task-010">
+        `developer` implements TASK-010. Definition of Done:
+        - `calsyn config` opens `~/.config/calsyn/config.yaml` with `open -t` and exits with code 0
+        - `calsyn config --config &lt;path&gt;` opens the given file instead
+        - If the file does not exist, `calsyn config` creates it empty (with its parent folders) and opens it
+        - If `open -t` fails, calsyn logs an ERROR line naming the path and exits with a code ≠ 0
+        `devils-advocate` reviews the result; `developer` applies the fixes until the review passes.
+    </task>
+    <task id="close-specs">
+        Rename `alligator/specs/EP-001/TASK-007.md` to `alligator/specs/EP-001/TASK-007-done.md`,
+        `alligator/specs/EP-001/TASK-008.md` to `alligator/specs/EP-001/TASK-008-done.md` and
+        `alligator/specs/EP-001/TASK-010.md` to `alligator/specs/EP-001/TASK-010-done.md`.
+        Update every reference to the old names under `alligator/specs/`.
+    </task>
+</tasks>

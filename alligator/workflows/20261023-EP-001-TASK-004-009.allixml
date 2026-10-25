@@ -1,0 +1,46 @@
+<context>
+Epic EP-001 — Calendar clones through Calendar.app.
+Goal: every calendar the Operator owns shows the busy slots of the other calendars, so colleagues on any account
+see the real availability and the Operator gets notified on every client.
+Architecture: a single Swift executable (`calsyn-cli`, Swift Package `calsyn`) talks to the calendar store
+through EventKit and never touches credentials. The `reconciler` is pure logic over the `calendar-store`
+abstraction, so it is tested against an in-memory fake.
+
+Scope of this workflow:
+- TASK-004: recurring, all-day, declined, free and tentative source events are cloned too, recurring occurrences
+  as standalone events. Components: reconciler, calendar-store.
+- TASK-009: canceled source events are never cloned, and the clones they already have are deleted at the next
+  reconcile. Components: reconciler, calendar-store.
+</context>
+<input type="task">alligator/specs/EP-001/TASK-004.md</input>
+<input type="task">alligator/specs/EP-001/TASK-009.md</input>
+<coding_test>
+- `swift test`: reconciler with recurring, all-day, declined, free, tentative fixtures (AS-09, AS-10); run on every change.
+- `swift test`: fake store with a canceled source event (TASK-009, both DoD items); run on every change.
+- Manual E2E: real recurring event on Exchange, `calsyn once`, check Calendar.app (AS-09); before closing TASK-004.
+- Manual E2E: an Exchange meeting canceled by its organizer, run `calsyn once`, check the destination in Calendar.app; before closing TASK-009.
+</coding_test>
+<available_agents>
+    <agent subagent_type="alligator-llm:developer" id="developer">Implements the code of the tasks and applies the fixes requested by the reviewer.</agent>
+    <agent subagent_type="alligator-llm:devils-advocate" id="devils-advocate">Reviews the implementation against the tasks' Definition of Done and the epic's architecture, and reports the gaps to the developer.</agent>
+</available_agents>
+<tasks>
+    <task id="task-004">
+        `developer` implements TASK-004. Definition of Done:
+        - A recurring source event → the destination shows one standalone, non-recurring clone per occurrence inside the window
+        - All-day, declined, free and tentative source events are cloned
+        - The clone of an all-day event is an all-day event
+        `devils-advocate` reviews the result; `developer` applies the fixes until the review passes.
+    </task>
+    <task id="task-009">
+        `developer` implements TASK-009. Definition of Done:
+        - A source event whose status is canceled → after `calsyn once` no destination has a clone of it
+        - A source event canceled after it was cloned → after the next reconcile its clone is gone from every destination
+        `devils-advocate` reviews the result; `developer` applies the fixes until the review passes.
+    </task>
+    <task id="close-specs">
+        Rename `alligator/specs/EP-001/TASK-004.md` to `alligator/specs/EP-001/TASK-004-done.md` and
+        `alligator/specs/EP-001/TASK-009.md` to `alligator/specs/EP-001/TASK-009-done.md`.
+        Update every reference to the old names under `alligator/specs/`.
+    </task>
+</tasks>

@@ -1,4 +1,5 @@
 @testable import CalsynCore
+import EventKit
 import XCTest
 
 final class ReconcilerTests: XCTestCase {
@@ -9,6 +10,7 @@ final class ReconcilerTests: XCTestCase {
         CalendarConfig(id: "tom@gmail.com/Calendar", clonePrefix: "[H]"),
     ]
     private let today = Date(timeIntervalSince1970: 1_792_627_200)
+    private let mondayToFriday: Set<Int> = [2, 3, 4, 5, 6]
     private var window: DateInterval {
         DateInterval(start: today, duration: 7 * 24 * 3600)
     }
@@ -39,6 +41,11 @@ final class ReconcilerTests: XCTestCase {
 
     private func tomorrow(_ title: String, at hour: Int, notes: String = "") -> EventContent {
         event(title, day: 1, at: hour, notes: notes)
+    }
+
+    private func allDay(_ title: String, day: Int) -> EventContent {
+        let start = today.addingTimeInterval(TimeInterval(24 * day * 3600))
+        return EventContent(title: title, notes: "", start: start, end: start.addingTimeInterval(24 * 3600), isAllDay: true)
     }
 
     private func reconcile(_ job: SyncJob) throws -> JobResult {
@@ -174,5 +181,28 @@ final class ReconcilerTests: XCTestCase {
 
         XCTAssertEqual(try reconcile(try loadConfig("")), JobResult(created: 0, deleted: 0))
         XCTAssertEqual(try allContents(home), [event("[W]", day: 30)])
+    }
+
+    func testRecurringEventClonedPerOccurrence() throws {
+        store.add(event("Standup", day: 0, at: 9), to: work, repeatingOn: mondayToFriday)
+
+        XCTAssertEqual(try reconcile(syncJob(work, home)), JobResult(created: 5, deleted: 0))
+        XCTAssertEqual(try allContents(home), [0, 1, 4, 5, 6].map { event("[W]", day: $0, at: 9) })
+    }
+
+    func testAllDayEventClonedAsAllDay() throws {
+        try store.create(allDay("Offsite", day: 1), in: work)
+
+        XCTAssertEqual(try reconcile(syncJob(work, home)), JobResult(created: 1, deleted: 0))
+        XCTAssertEqual(try contents(home), [allDay("[W]", day: 1)])
+    }
+
+    func testDeclinedFreeAndTentativeEventsCloned() throws {
+        store.add(tomorrow("Budget", at: 9), to: work, participation: .declined)
+        store.add(tomorrow("Lunch", at: 12), to: work, availability: .free)
+        store.add(tomorrow("Demo", at: 15), to: work, availability: .tentative)
+
+        XCTAssertEqual(try reconcile(syncJob(work, home)), JobResult(created: 3, deleted: 0))
+        XCTAssertEqual(try contents(home), [tomorrow("[W]", at: 9), tomorrow("[W]", at: 12), tomorrow("[W]", at: 15)])
     }
 }

@@ -1,3 +1,5 @@
+claude --resume 2fcb9e28-1190-42ac-84fc-b376b67bd9fe
+
 # calsyn
 Sincronizza piu' calendari Outlook e Google Calendar tra loro
 In particolare crea degli eventi clone nei rispettivi calendari in modo da:
